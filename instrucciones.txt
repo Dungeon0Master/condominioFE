@@ -1,0 +1,135 @@
+==============================================================================
+   MANUAL DE INSTALACIÓN Y EJECUCIÓN - SISTEMA DE CONDOMINIO (CHAT EN VIVO)
+==============================================================================
+
+Este documento detalla los pasos para instalar, configurar y ejecutar el sistema 
+de gestión de condominios, que incluye un Backend en Laravel (con WebSockets) 
+y un Frontend en React.
+
+REQUISITOS PREVIOS:
+-------------------
+Asegúrate de tener instalado en tu computadora:
+1. PHP >= 8.2 (con extensiones pdo_pgsql, sockets, curl activas)
+2. Composer (Gestor de paquetes de PHP)
+3. Node.js y NPM (Gestor de paquetes de JavaScript)
+4. PostgreSQL (Base de datos)
+
+
+==============================================================================
+   PARTE 1: CONFIGURACIÓN DEL BACKEND (LARAVEL)
+==============================================================================
+
+1. Clonar el repositorio (si aún no lo has hecho) y entrar a la carpeta:
+   > git clone <URL_DE_TU_REPOSITORIO_BACKEND>
+   > cd condominioBackEnd
+
+2. Instalar dependencias de PHP:
+   > composer install
+
+3. Configurar el entorno (.env):
+   - Crea una copia del archivo de ejemplo:
+     > cp .env.example .env
+   
+   - Abre el archivo .env y configura tu base de datos PostgreSQL:
+     DB_CONNECTION=pgsql
+     DB_HOST=127.0.0.1
+     DB_PORT=5432
+     DB_DATABASE=condominio
+     DB_USERNAME=tu_usuario_postgres
+     DB_PASSWORD=tu_contraseña
+
+   - Al final del archivo .env, asegura la configuración de Reverb (WebSockets):
+     BROADCAST_CONNECTION=reverb
+     REVERB_APP_ID=my-app-id
+     REVERB_APP_KEY=my-app-key
+     REVERB_APP_SECRET=my-app-secret
+     REVERB_HOST="localhost"
+     REVERB_PORT=8080
+     REVERB_SCHEME=http
+
+4. CREAR LA BASE DE DATOS (VÍA TERMINAL)
+   Ejecuta estos comandos para entrar a PostgreSQL y crear la base de datos vacía:
+
+   > psql -U postgres
+   (Te pedirá tu contraseña de Postgres)
+
+   Una vez dentro (el prompt cambiará a 'postgres=#'), escribe:
+   postgres=# CREATE DATABASE condominio;
+   postgres=# \q
+
+5. Generar la llave de encriptación de Laravel:
+   > php artisan key:generate
+
+6. Ejecutar las migraciones (Crear tablas en la base de datos):
+   > php artisan migrate
+
+7. llena la base de datos con los datos de prueba
+   > php artisan db:seed
+
+==============================================================================
+   PARTE 2: CONFIGURACIÓN DEL FRONTEND (REACT + VITE)
+==============================================================================
+
+1. Entrar a la carpeta del frontend (en otra terminal):
+
+
+2. Instalar dependencias de Node:
+   > npm install
+
+3. Configurar el entorno (.env):
+   - Crea un archivo llamado .env en la raíz de la carpeta del frontend.
+   - Pega el siguiente contenido (debe coincidir con el backend):
+
+     VITE_API_URL=http://localhost:8000
+     
+     # Configuración de WebSockets para el Chat
+     VITE_REVERB_APP_KEY=my-app-key
+     VITE_REVERB_HOST="localhost"
+     VITE_REVERB_PORT=8080
+     VITE_REVERB_SCHEME=http
+
+==============================================================================
+   PARTE 3: CÓMO EJECUTAR EL SISTEMA (IMPORTANTE)
+==============================================================================
+
+Para que el chat funcione en tiempo real, necesitas tener abiertas 3 TERMINALES 
+simultáneamente. No cierres ninguna mientras uses el programa.
+
+--- TERMINAL 1: EL SERVIDOR BACKEND ---
+Ubicación: carpeta /condominioBackEnd
+Comando:
+> php artisan serve
+
+(Esto iniciará la API en http://127.0.0.1:8000)
+
+--- TERMINAL 2: EL SERVIDOR DE WEBSOCKETS (CHAT) ---
+Ubicación: carpeta /condominioBackEnd
+Comando:
+> php artisan reverb:start
+
+(Si este comando no corre, el chat no funcionará en tiempo real)
+
+--- TERMINAL 3: EL FRONTEND (INTERFAZ) ---
+Ubicación: carpeta /Condominio
+Comando:
+> npm run dev
+
+(Esto te dará la dirección web, usualmente http://localhost:5173)
+
+==============================================================================
+   NOTAS DE SOLUCIÓN DE PROBLEMAS
+==============================================================================
+
+1. Error "Connection refused" en el chat:
+   - Verifica que la TERMINAL 2 esté corriendo sin errores.
+   - Verifica que el archivo .env del frontend tenga VITE_REVERB_SCHEME=http
+
+2. Error 401 (Unauthorized) al recargar:
+   - El sistema está diseñado para guardar el token. Simplemente vuelve a hacer Login 
+     si el token expiró.
+
+3. Error de base de datos:
+   - Asegúrate de que PostgreSQL esté corriendo y que las credenciales en el .env 
+     del backend sean correctas.
+
+==============================================================================
