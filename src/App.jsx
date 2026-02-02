@@ -13,28 +13,45 @@ const PlaceholderPage = ({ title }) => (
 );
 
 function App() {
-  // 1. LÓGICA UNIFICADA: Recuperar Usuario Y Configurar Axios AL MISMO TIEMPO
   const [user, setUser] = useState(() => {
       const savedUser = localStorage.getItem('user_data');
       const token = localStorage.getItem('token');
-
-      // --- CORRECCIÓN CRÍTICA ---
-      // Configuramos Axios AQUÍ, sincrónicamente.
-      // Esto asegura que el token esté listo ANTES de que se renderice el Chat.
+      // Configuración inicial del header
       if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } else {
-          delete axios.defaults.headers.common['Authorization'];
       }
-      // ---------------------------
-
       return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  // 
+  // Esto vigila todas las respuestas del servidor.
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response, // Si todo sale bien, deja pasar la respuesta
+      (error) => {
+        // Si el servidor responde 401 (No autorizado)
+        if (error.response && error.response.status === 401) {
+          console.log("Sesión caducada o inválida. Cerrando sesión...");
+          
+          // 1. Limpiamos almacenamiento local
+          localStorage.removeItem('user_data');
+          localStorage.removeItem('token');
+          delete axios.defaults.headers.common['Authorization'];
+          
+          // 2. Actualizamos estado para que React Router nos mande al Login
+          setUser(null);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Limpieza del interceptor al desmontar
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
 
   const handleLogin = (userData) => {
       setUser(userData);
       localStorage.setItem('user_data', JSON.stringify(userData));
-      // Al hacer login manual, también aseguramos el header por si acaso
       const token = localStorage.getItem('token');
       if(token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
@@ -56,6 +73,7 @@ function App() {
                 <Route path="alertas" element={<PlaceholderPage title="Alertas" />} />
             </Route>
         ) : (
+            // Esta ruta captura cualquier intento de entrar sin usuario y lo manda al login
             <Route path="*" element={<Navigate to="/login" />} />
         )}
       </Routes>
