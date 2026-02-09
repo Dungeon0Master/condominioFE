@@ -4,6 +4,7 @@ import axios from 'axios';
 import Login from './components/login'; 
 import Chat from './components/Chat';
 import MainLayout from './components/MainLayout';
+import Residentes from './components/Residentes';
 
 const PlaceholderPage = ({ title }) => (
     <div className="p-10">
@@ -69,7 +70,7 @@ function App() {
                 <Route index element={<Navigate to="/chat" replace />} />
                 <Route path="home" element={<PlaceholderPage title="Inicio" />} />
                 <Route path="chat" element={<Chat usuarioActual={user} />} />
-                <Route path="residentes" element={<PlaceholderPage title="Residentes" />} />
+                <Route path="residentes" element={<Residentes />} />
                 <Route path="alertas" element={<PlaceholderPage title="Alertas" />} />
             </Route>
         ) : (
