@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosClient from '../axios'; 
 
 const Login = ({ onLogin }) => {
     const [email, setEmail] = useState('');
@@ -11,8 +11,8 @@ const Login = ({ onLogin }) => {
         setError('');
 
         try {
-           
-            const response = await axios.post('/login', {
+            // Ya no necesitas poner toda la URL, axiosClient sabe que es /api/login
+            const response = await axiosClient.post('/login', {
                 email: email,
                 password: password
             });
@@ -20,14 +20,17 @@ const Login = ({ onLogin }) => {
             const token = response.data.access_token;
             const user = response.data.user;
 
+            // Guardamos el token. El interceptor de axios.js se encargará de usarlo de ahora en adelante
             localStorage.setItem('token', token);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
             onLogin(user);
 
         } catch (err) {
             console.error(err);
             if (err.response && err.response.status === 401) {
                 setError('Credenciales incorrectas.');
+            } else if (err.response && err.response.status === 422) {
+                setError('Por favor, verifica los datos ingresados.');
             } else {
                 setError('Error de conexión.');
             }

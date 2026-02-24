@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import axiosClient from '../axios'; 
 import echo from '../utils/echo'; 
 
 const Chat = ({ usuarioActual }) => { 
@@ -8,9 +8,8 @@ const Chat = ({ usuarioActual }) => {
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
-        axios.get('/messages').then(response => {
-
-            
+        // Usamos axiosClient para obtener el historial
+        axiosClient.get('/messages').then(response => {
             setMessages(response.data);
             scrollToBottom();
         });
@@ -18,7 +17,6 @@ const Chat = ({ usuarioActual }) => {
         const channel = echo.private('chat');
         channel.listen('.message.sent', (e) => {
             setMessages(prev => {
-                // Evitar duplicados
                 if (e.id) {
                     const exists = prev.some(msg => String(msg.id) === String(e.id));
                     if (exists) return prev;
@@ -29,9 +27,8 @@ const Chat = ({ usuarioActual }) => {
                 return [...prev, {
                     id: uniqueId,
                     message: e.message,
-                    // Normalizamos la estructura para que coincida con el historial
                     user_id: e.user_id, 
-                    usuario: { persona: { nombre: e.user_name } }, // Simulamos estructura DB
+                    usuario: { persona: { nombre: e.user_name } }, 
                     created_at: e.created_at,
                     is_mine: (String(usuarioActual.id) === String(e.user_id)) 
                 }];
@@ -50,12 +47,12 @@ const Chat = ({ usuarioActual }) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
         try {
-            const response = await axios.post('/messages', { message: newMessage });
+            // Usamos axiosClient para enviar el mensaje
+            const response = await axiosClient.post('/messages', { message: newMessage });
             const msgResponse = response.data.message;
             
-            // Forzamos que el mensaje enviado localmente sea "mío"
             msgResponse.is_mine = true; 
-            msgResponse.user_id = usuarioActual.id; // Aseguramos ID
+            msgResponse.user_id = usuarioActual.id; 
             
             setMessages(prev => [...prev, msgResponse]);
             setNewMessage('');

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios'; 
+import axiosClient from './axios'; 
 import Login from './components/login'; 
 import Chat from './components/Chat';
 import MainLayout from './components/MainLayout';
 import Residentes from './components/Residentes';
+import SetPassword from './components/SetPassword';
 
 const PlaceholderPage = ({ title }) => (
     <div className="p-10">
@@ -16,54 +17,37 @@ const PlaceholderPage = ({ title }) => (
 function App() {
   const [user, setUser] = useState(() => {
       const savedUser = localStorage.getItem('user_data');
-      const token = localStorage.getItem('token');
-      // Configuración inicial del header
-      if (token) {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      }
       return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // 
-  // Esto vigila todas las respuestas del servidor.
+  // Interceptor para detectar tokens vencidos (Error 401)
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response, // Si todo sale bien, deja pasar la respuesta
+    const interceptor = axiosClient.interceptors.response.use(
+      (response) => response,
       (error) => {
-        // Si el servidor responde 401 (No autorizado)
         if (error.response && error.response.status === 401) {
           console.log("Sesión caducada o inválida. Cerrando sesión...");
-          
-          // 1. Limpiamos almacenamiento local
           localStorage.removeItem('user_data');
           localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
-          
-          // 2. Actualizamos estado para que React Router nos mande al Login
           setUser(null);
         }
         return Promise.reject(error);
       }
     );
 
-    // Limpieza del interceptor al desmontar
-    return () => axios.interceptors.response.eject(interceptor);
+    return () => axiosClient.interceptors.response.eject(interceptor);
   }, []);
 
   const handleLogin = (userData) => {
       setUser(userData);
       localStorage.setItem('user_data', JSON.stringify(userData));
-      const token = localStorage.getItem('token');
-      if(token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route 
-            path="/login" 
-            element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/chat" />} 
-        />
+        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/chat" />} />
+        <Route path="/set-password" element={<SetPassword />} />
 
         {user ? (
             <Route path="/" element={<MainLayout usuario={user} />}>
