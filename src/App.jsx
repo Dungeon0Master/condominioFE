@@ -6,6 +6,7 @@ import Chat from './components/Chat';
 import MainLayout from './components/MainLayout';
 import Residentes from './components/Residentes';
 import SetPassword from './components/SetPassword';
+import ForgotPassword from './components/ForgotPassword'; // IMPORTANTE: Añadimos la importación
 
 const PlaceholderPage = ({ title }) => (
     <div className="p-10">
@@ -48,6 +49,9 @@ function App() {
       <Routes>
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/chat" />} />
         <Route path="/set-password" element={<SetPassword />} />
+        
+        {/* AQUÍ ESTÁ EL CAMBIO CLAVE: Nueva ruta pública */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {user ? (
             <Route path="/" element={<MainLayout usuario={user} />}>
