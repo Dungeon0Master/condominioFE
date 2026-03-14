@@ -6,7 +6,9 @@ import Chat from './components/Chat';
 import MainLayout from './components/MainLayout';
 import Residentes from './components/Residentes';
 import SetPassword from './components/SetPassword';
-import ForgotPassword from './components/ForgotPassword'; // IMPORTANTE: Añadimos la importación
+import ForgotPassword from './components/ForgotPassword';
+// IMPORTANTE: Aseguramos que la importación coincida con el nombre de tu archivo
+import ProtectedRoutes from './components/ProtectedRoutes'; 
 
 const PlaceholderPage = ({ title }) => (
     <div className="p-10">
@@ -21,7 +23,7 @@ function App() {
       return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // Interceptor para detectar tokens vencidos (Error 401)
+  // Interceptor para detectar tokens vencidos
   useEffect(() => {
     const interceptor = axiosClient.interceptors.response.use(
       (response) => response,
@@ -47,24 +49,28 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/chat" />} />
+        {/* Rutas Públicas */}
+        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/chat" replace />} />
         <Route path="/set-password" element={<SetPassword />} />
-        
-        {/* AQUÍ ESTÁ EL CAMBIO CLAVE: Nueva ruta pública */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {user ? (
+        {/* 1er Nivel: Protege que el usuario esté logueado */}
+        <Route element={<ProtectedRoutes user={user} />}>
             <Route path="/" element={<MainLayout usuario={user} />}>
                 <Route index element={<Navigate to="/chat" replace />} />
-                <Route path="home" element={<PlaceholderPage title="Inicio" />} />
                 <Route path="chat" element={<Chat usuarioActual={user} />} />
-                <Route path="residentes" element={<Residentes />} />
-                <Route path="alertas" element={<PlaceholderPage title="Alertas" />} />
+                <Route path="home" element={<PlaceholderPage title="Inicio" />} />
+                
+                {/* 2do Nivel: Protege que el usuario ADEMÁS sea administrador */}
+                <Route element={<ProtectedRoutes user={user} requireAdmin={true} />}>
+                    <Route path="residentes" element={<Residentes />} />
+                    <Route path="alertas" element={<PlaceholderPage title="Alertas" />} />
+                </Route>
             </Route>
-        ) : (
-            // Esta ruta captura cualquier intento de entrar sin usuario y lo manda al login
-            <Route path="*" element={<Navigate to="/login" />} />
-        )}
+        </Route>
+
+        {/* Captura cualquier ruta que no exista y manda al login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

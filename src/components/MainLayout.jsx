@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Importante para la petición de logout
+import axios from 'axios';
 import echo from '../utils/echo'; 
 import NotificationModal from './NotificationModal';
 
-// ... (Tus iconos IconHome, IconUsers, etc. se quedan igual) ...
+// Iconos
 const IconHome = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
 const IconUsers = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const IconChat = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
@@ -18,12 +18,23 @@ const MainLayout = ({ usuario }) => {
     
     // Estados para modales y menús
     const [showModal, setShowModal] = useState(false);
-    const [showUserMenu, setShowUserMenu] = useState(false); // NUEVO: Menú de usuario
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [notifications, setNotifications] = useState([]);
     
     const isActive = (path) => location.pathname === path;
 
-    // --- Lógica de Notificaciones (Igual que antes) ---
+    // 1. EXTRAER DATOS DINÁMICOS DEL USUARIO
+    // Intentamos sacar el nombre de la relación "persona" (que manda Laravel). 
+    // Si no tiene, usamos la primera parte de su correo.
+    const userName = usuario?.persona?.nombre || usuario?.email?.split('@')[0] || 'Usuario';
+    const userLastName = usuario?.persona?.apellido || '';
+    const fullName = `${userName} ${userLastName}`.trim();
+    
+    // 2. VALIDACIÓN DE ROL (Para ocultar menús)
+    // Validamos si es admin (1 o true)
+    const isAdmin = usuario?.admin === 1 || usuario?.admin === true;
+
+    // --- Lógica de Notificaciones ---
     useEffect(() => {
         const channel = echo.private('chat');
         channel.listen('.message.sent', (e) => {
@@ -48,24 +59,18 @@ const MainLayout = ({ usuario }) => {
         }
     }, [location.pathname]);
 
-    // --- NUEVA Lógica de Logout ---
+    // --- Lógica de Logout ---
     const handleLogout = async () => {
         try {
-            // 1. Avisar al backend para destruir el token (opcional, pero recomendado)
             await axios.post('/logout');
         } catch (error) {
             console.error("Error al cerrar sesión en servidor", error);
-            // Incluso si falla el backend, procedemos a limpiar el frontend
         } finally {
-            // 2. Limpieza total del frontend
             localStorage.removeItem('user_data');
             localStorage.removeItem('token');
             delete axios.defaults.headers.common['Authorization'];
             
-            // 3. Desconectar WebSockets para no recibir más eventos
             if (window.Echo) window.Echo.disconnect();
-
-            // 4. Forzar recarga completa para ir al login limpio
             window.location.href = '/login';
         }
     };
@@ -101,13 +106,6 @@ const MainLayout = ({ usuario }) => {
                         <span className={`text-[10px] ${isActive('/home') ? 'text-white font-bold' : 'text-white/80'}`}>Inicio</span>
                     </Link>
 
-                    <Link to="/residentes" className="flex flex-col items-center gap-1 group">
-                         <div className={`p-2 rounded-lg transition-colors ${isActive('/residentes') ? 'bg-white/20 text-white' : 'text-white/80 group-hover:text-white'}`}>
-                            <IconUsers />
-                        </div>
-                        <span className={`text-[10px] ${isActive('/residentes') ? 'text-white font-bold' : 'text-white/80'}`}>Residentes</span>
-                    </Link>
-
                     <Link to="/chat" className="flex flex-col items-center gap-1 group">
                         <div className={`p-2 rounded-lg transition-colors ${isActive('/chat') ? 'bg-white/20 text-white' : 'text-white/80 group-hover:text-white'}`}>
                             <IconChat />
@@ -115,12 +113,24 @@ const MainLayout = ({ usuario }) => {
                         <span className={`text-[10px] ${isActive('/chat') ? 'text-white font-bold' : 'text-white/80'}`}>Chat</span>
                     </Link>
 
-                    <Link to="/alertas" className="flex flex-col items-center gap-1 group">
-                         <div className={`p-2 rounded-lg transition-colors ${isActive('/alertas') ? 'bg-white/20 text-white' : 'text-white/80 group-hover:text-white'}`}>
-                            <IconAlert />
-                        </div>
-                        <span className={`text-[10px] ${isActive('/alertas') ? 'text-white font-bold' : 'text-white/80'}`}>Alertas</span>
-                    </Link>
+                    {/* --- MENÚS PROTEGIDOS (SOLO ADMIN) --- */}
+                    {isAdmin && (
+                        <>
+                            <Link to="/residentes" className="flex flex-col items-center gap-1 group">
+                                 <div className={`p-2 rounded-lg transition-colors ${isActive('/residentes') ? 'bg-white/20 text-white' : 'text-white/80 group-hover:text-white'}`}>
+                                    <IconUsers />
+                                </div>
+                                <span className={`text-[10px] ${isActive('/residentes') ? 'text-white font-bold' : 'text-white/80'}`}>Residentes</span>
+                            </Link>
+
+                            <Link to="/alertas" className="flex flex-col items-center gap-1 group">
+                                 <div className={`p-2 rounded-lg transition-colors ${isActive('/alertas') ? 'bg-white/20 text-white' : 'text-white/80 group-hover:text-white'}`}>
+                                    <IconAlert />
+                                </div>
+                                <span className={`text-[10px] ${isActive('/alertas') ? 'text-white font-bold' : 'text-white/80'}`}>Alertas</span>
+                            </Link>
+                        </>
+                    )}
 
                     <button onClick={() => setShowModal(true)} className="mt-4 text-white/80 hover:text-white relative">
                         <div className={`p-2 rounded-lg transition-colors ${showModal ? 'bg-white/20 text-white' : ''}`}>
@@ -135,22 +145,23 @@ const MainLayout = ({ usuario }) => {
                 </nav>
 
                 {/* --- PERFIL CON MENÚ DE LOGOUT --- */}
-                <div className="mt-auto relative">
+                <div className="mt-auto relative w-full flex justify-center">
                     
                     {/* Menú Flotante (Popup) */}
                     {showUserMenu && (
                         <>
-                            {/* Overlay transparente para cerrar al hacer click fuera */}
                             <div 
                                 className="fixed inset-0 z-40" 
                                 onClick={() => setShowUserMenu(false)}
                             ></div>
                             
-                            {/* El menú en sí */}
-                            <div className="absolute bottom-0 left-14 ml-2 w-48 bg-white rounded-lg shadow-xl py-2 z-50 animate-fade-in-up border border-gray-100">
+                            <div className="absolute bottom-0 left-16 ml-2 w-48 bg-white rounded-lg shadow-xl py-2 z-50 animate-fade-in-up border border-gray-100">
                                 <div className="px-4 py-2 border-b border-gray-100">
-                                    <p className="text-sm font-bold text-gray-800 truncate">{usuario?.name}</p>
+                                    {/* Muestra el nombre dinámico en el menú */}
+                                    <p className="text-sm font-bold text-gray-800 truncate">{fullName}</p>
                                     <p className="text-xs text-gray-500 truncate">{usuario?.email}</p>
+                                    {/* Etiqueta opcional para saber que es Admin */}
+                                    {isAdmin && <span className="inline-block mt-1 bg-orange-100 text-brand-orange text-[10px] px-2 py-0.5 rounded font-bold">Administrador</span>}
                                 </div>
                                 <button 
                                     onClick={handleLogout}
@@ -166,13 +177,18 @@ const MainLayout = ({ usuario }) => {
                     {/* Botón de Perfil (Trigger) */}
                     <button 
                         onClick={() => setShowUserMenu(!showUserMenu)}
-                        className="flex flex-col items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none"
+                        className="flex flex-col items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none w-full"
                     >
                         <div className={`w-10 h-10 rounded-full overflow-hidden border-2 bg-gray-200 transition-colors ${showUserMenu ? 'border-brand-orange ring-2 ring-white' : 'border-white'}`}>
-                            <img src={`https://ui-avatars.com/api/?name=${usuario?.name || 'User'}&background=random`} alt="User" className="w-full h-full object-cover"/>
+                            {/* La API de ui-avatars generará las iniciales a partir del fullName. Le pusimos los colores de tu marca. */}
+                            <img 
+                                src={`https://ui-avatars.com/api/?name=${fullName}&background=E85D04&color=fff&bold=true`} 
+                                alt="User" 
+                                className="w-full h-full object-cover"
+                            />
                         </div>
-                        <span className="text-white text-[10px] font-medium max-w-[80px] truncate text-center">
-                            {usuario?.name || 'Arturo'}
+                        <span className="text-white text-[10px] font-medium max-w-[70px] px-1 truncate text-center">
+                            {userName}
                         </span>
                     </button>
                 </div>
